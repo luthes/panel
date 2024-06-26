@@ -19,22 +19,15 @@ x-common:
     # MAIL_PASSWORD: ""
     # MAIL_ENCRYPTION: ""
 
-
-# ------------------------------------------------------------------------------------------
-# DANGER ZONE BELOW
-#
-# The remainder of this file likely does not need to be changed. Please only make modifications
-# below if you understand what you are doing.
-
 services:
   caddy:
     image: caddy:2.8.4-alpine
     # image: ghcr.io/lutherlabs/panel:latest
     restart: always
     volumes:
-      - local-html:/var/www/html/
+      - pelican-data:/var/www/html/
+      - pelican-logs:/var/www/html/storage/logs/
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - pelican-logs:/var/www/html/storage/logs
     ports:
       - "80:80"
       - "443:443"
@@ -51,8 +44,7 @@ services:
     command:
       - /bin/sh
       - -c
-      - |
-        caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+      - caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
       # The sed replacement is a hack, Caddyfile should be updated to use Docker DNS.
 
   mariadb:
@@ -62,6 +54,8 @@ services:
       MARIADB_USER: pelican
       MARIADB_PASSWORD: pelican
       MARIADB_DATABASE: pelican
+    volumes:
+      - pelican-data:/var/www/html/database
     healthcheck:
       interval: 5s
       test: ["CMD", "healthcheck.sh" ,"--connect", "--innodb_initialized"]
@@ -72,7 +66,7 @@ services:
       - "3306"
 
   panel: # Panel should only run php-fpm
-    image: ghcr.io/lutherlabs/panel:latest
+    image: panel:latest
     depends_on:
       mariadb:
         condition: service_healthy
@@ -80,8 +74,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - local-html:/var/www/html/
-      - pelican-logs:/var/www/html/storage/logs
+      - pelican-data:/var/www/html/
+      - pelican-logs:/var/www/html/storage/logs/
     environment:
       <<: [*panel-environment, *mail-environment]
       DB_CONNECTION: mariadb
@@ -91,20 +85,13 @@ services:
       DB_USERNAME: pelican
       DB_PASSWORD: pelican
     command:
-      - |
       - /bin/sh
       - -c
-      - |
-        composer install --no-dev --optimize-autoloader && php-fpm
+      - php-fpm
 
 volumes:
+  pelican-data:
   pelican-logs:
-  local-html:
-    driver: local
-    driver_opts:
-      device: $PWD
-      type: none
-      o: bind
 
 networks:
   default:
