@@ -1,7 +1,5 @@
 <?php
 
-$databasePath = env('DB_DATABASE', 'database.sqlite');
-
 return [
 
     'default' => env('DB_CONNECTION', 'sqlite'),
@@ -10,7 +8,7 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
-            'database' => str_starts_with($databasePath, '/') ? $databasePath : database_path($databasePath),
+            'database' => database_path(env('DB_DATABASE', 'database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],
